@@ -139,9 +139,9 @@ struct kbase_kinstr_jm_atom_state_change {
 	} data;
 };
 static_assert(
-	((1 << 8 * sizeof(((struct kbase_kinstr_jm_atom_state_change *)0)->state)) - 1) >=
-	KBASE_KINSTR_JM_READER_ATOM_STATE_COUNT);
-
+    ((1UL << (8 * sizeof(((struct kbase_kinstr_jm_atom_state_change *)0)->state))) - 1) >=
+    KBASE_KINSTR_JM_READER_ATOM_STATE_COUNT,
+    "State count exceeds maximum possible value");
 #define KBASE_KINSTR_JM_ATOM_STATE_FLAG_OVERFLOW BIT(0)
 
 /**
