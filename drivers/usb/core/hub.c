@@ -1758,28 +1758,6 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	hdev = interface_to_usbdev(intf);
 
 	/*
-	 * The USB 2.0 spec prohibits hubs from having more than one
-	 * configuration or interface, and we rely on this prohibition.
-	 * Refuse to accept a device that violates it.
-	 */
-	if (hdev->descriptor.bNumConfigurations > 1 ||
-			hdev->actconfig->desc.bNumInterfaces > 1) {
-		dev_err(&intf->dev, "Invalid hub with more than one config or interface\n");
-		return -EINVAL;
-	}
-
-	/*
-	 * The USB 2.0 spec prohibits hubs from having more than one
-	 * configuration or interface, and we rely on this prohibition.
-	 * Refuse to accept a device that violates it.
-	 */
-	if (hdev->descriptor.bNumConfigurations > 1 ||
-			hdev->actconfig->desc.bNumInterfaces > 1) {
-		dev_err(&intf->dev, "Invalid hub with more than one config or interface\n");
-		return -EINVAL;
-	}
-
-	/*
 	 * Set default autosuspend delay as 0 to speedup bus suspend,
 	 * based on the below considerations:
 	 *
@@ -2588,13 +2566,13 @@ int usb_new_device(struct usb_device *udev)
 		err = sysfs_create_link(&udev->dev.kobj,
 				&port_dev->dev.kobj, "port");
 		if (err)
-			goto out_del_dev;
+			goto fail;
 
 		err = sysfs_create_link(&port_dev->dev.kobj,
 				&udev->dev.kobj, "device");
 		if (err) {
 			sysfs_remove_link(&udev->dev.kobj, "port");
-			goto out_del_dev;
+			goto fail;
 		}
 
 		if (!test_and_set_bit(port1, hub->child_usage_bits))
@@ -2606,8 +2584,6 @@ int usb_new_device(struct usb_device *udev)
 	pm_runtime_put_sync_autosuspend(&udev->dev);
 	return err;
 
-out_del_dev:
-	device_del(&udev->dev);
 fail:
 	usb_set_device_state(udev, USB_STATE_NOTATTACHED);
 	pm_runtime_disable(&udev->dev);
@@ -4485,7 +4461,7 @@ static int hub_set_address(struct usb_device *udev, int devnum)
 	if (udev->state != USB_STATE_DEFAULT)
 		return -EINVAL;
 	if (hcd->driver->address_device)
-		retval = hcd->driver->address_device(hcd, udev, USB_CTRL_SET_TIMEOUT);
+		retval = hcd->driver->address_device(hcd, udev);
 	else
 		retval = usb_control_msg(udev, usb_sndaddr0pipe(),
 				USB_REQ_SET_ADDRESS, 0, devnum, 0,
@@ -4968,10 +4944,6 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 	struct usb_port *port_dev = hub->ports[port1 - 1];
 	struct usb_device *udev = port_dev->child;
 	static int unreliable_port = -1;
-#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
-	pr_info("%s\n", __func__);
-#endif
-
 	bool retry_locked;
 
 	/* Disconnect any existing devices under this port */
@@ -5030,11 +5002,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 	status = 0;
 
 	for (i = 0; i < SET_CONFIG_TRIES; i++) {
-#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
-		dev_info(&port_dev->dev,
-			"%s : before usb_alloc_dev() port %d, status %04x, change %04x, %s\n",
-			__func__, port1, portstatus, portchange, portspeed(hub, portstatus));
-#endif		usb_lock_port(port_dev);
+		usb_lock_port(port_dev);
 		mutex_lock(hcd->address0_mutex);
 		retry_locked = true;
 
