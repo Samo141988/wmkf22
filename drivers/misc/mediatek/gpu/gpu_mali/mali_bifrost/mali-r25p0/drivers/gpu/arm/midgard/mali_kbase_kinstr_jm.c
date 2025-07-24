@@ -48,7 +48,13 @@
 #include <linux/version.h>
 #include <linux/wait.h>
 
+#if KERNEL_VERSION(5, 1, 0) <= LINUX_VERSION_CODE
 #include <linux/build_bug.h>
+#else
+// Stringify the expression if no message is given.
+#define static_assert(e, ...)  __static_assert(e, #__VA_ARGS__, #e)
+#define __static_assert(e, msg, ...) _Static_assert(e, msg)
+#endif
 
 #if KERNEL_VERSION(4, 16, 0) >= LINUX_VERSION_CODE
 typedef unsigned int __poll_t;
@@ -139,9 +145,9 @@ struct kbase_kinstr_jm_atom_state_change {
 	} data;
 };
 static_assert(
-    ((1UL << (8 * sizeof(((struct kbase_kinstr_jm_atom_state_change *)0)->state))) - 1) >=
-    KBASE_KINSTR_JM_READER_ATOM_STATE_COUNT,
-    "State count exceeds maximum possible value");
+	((1 << 8 * sizeof(((struct kbase_kinstr_jm_atom_state_change *)0)->state)) - 1) >=
+	KBASE_KINSTR_JM_READER_ATOM_STATE_COUNT);
+
 #define KBASE_KINSTR_JM_ATOM_STATE_FLAG_OVERFLOW BIT(0)
 
 /**
